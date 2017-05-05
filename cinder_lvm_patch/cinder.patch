@@ -1,0 +1,26 @@
+--- /etc/puppet/mitaka-9.0/modules/openstack_tasks/manifests/roles/cinder.pp	2016-06-16 18:32:28.000000000 +0000
++++ cinder.pp	2017-05-05 09:03:26.810739358 +0000
+@@ -97,6 +97,23 @@
+     $manage_volumes = 'iscsi'
+     $physical_volumes = false
+     $volume_backend_name = $storage_hash['volume_backend_names']['volumes_lvm']
++    $cinder_lvm_filter = '[ "a|^/dev/sda[0-9]*$|", "r|.*|"]'
++
++    file_line { 'lvm-conf-set-cinder-filter':
++      ensure => present,
++      path   => '/etc/lvm/lvm.conf',
++      line   => "global_filter = ${cinder_lvm_filter}",
++      match  => 'global_filter\ \=\ ',
++      tag    => 'lvm-conf-file-line'
++    }
++
++    exec { 'Update initramfs':
++      command     => 'update-initramfs -u -k all',
++      path        => '/usr/bin:/bin:/usr/sbin:/sbin',
++      refreshonly => true,
++    }
++    File_line<| tag == 'lvm-conf-file-line'|> ~> Exec<| title == 'Update initramfs' |>
++
+   } elsif roles_include(['cinder-vmware']) {
+     $manage_volumes = 'vmdk'
+     $physical_volumes = false
